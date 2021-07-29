@@ -1,5 +1,5 @@
 ---
-title: "Final project-FLS6397: Exploring Beijing Taxis GPS data"
+title: "Final project: Exploring Beijing Taxis GPS data"
 author: "Jeevan Giddaluru"
 date: "19/06/2021"
 output:
@@ -8,34 +8,28 @@ output:
 bibliography: references.bib
 ---
 
+<div style = "text-align: justify">
 
-```{r, echo = FALSE} 
-# formats the final page with messages and warnings disabled
-# echo TRUE indicates r chunks to appear on final page except the present chunk which is declared as FALSE
-
-knitr::opts_chunk$set(echo = TRUE,
-                      warning = FALSE,
-                      message = FALSE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-
-<div style = "text-align: justify"> 
-
-
-#### Instructions
-
+#### Observations:  
+The project "Exploring Beijing Taxis GPS data" is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project is developed based on the principles and techniques discussed in the course, prioritizing the clarity and organization of the script and the good practices of data science and programming. Therefore, certain parts of the analysis consider simple assumptions and may not represent the actual complexity of a scientific problem. The complete instructions are found [here](https://jonnyphillips.github.io/Ciencia_de_Dados/projeto.html).
 
 do not forget to remove the set working directory
 ```{r}
 setwd("D:/data/Disciplines/Data_Analysis_for_Social_Sciences/Challenges/Final-Project/")
 ```
 
-
 ### 1. Introduction
-
+Global Positioning System (GPS) technology has revolutionized the field of navigation. 
 
 ### 2. Objectives
-
+1. Calculate variables such as distance and speed from raw coordinate tracks of the taxis  
+2. Identify staying points and moving points of the taxis  
+3. Generate and categorize trips and staying locations of the taxis  
+4. Predict trip duration using a linear regression model  
 
 ### 3. Analysis
 
@@ -68,6 +62,13 @@ library(Zelig)              #install.packages("Zelig")
 ```
 
 
+As per the official user_guide (available in the taxi_data folder), the raw GPS trajectory of a taxi contains four columns.  
+  * Taxi ID  
+  * Date and time when the coordinates were recorded  
+  * Longitude  
+  * Latitude  
+First, we import and work only with data from one taxi (TAXI 48) and assign respective column names.
+
 <br>
 ```{r}
 # imports only one taxi file (48.txt) data from taxi_data folder. 
@@ -75,30 +76,34 @@ library(Zelig)              #install.packages("Zelig")
 
 taxi <- read_delim("taxi_data/48.txt", 
                    delim = ",", col_names = FALSE) %>%
-  set_names(c("taxi_id","date_time","longitude","latitude")) %>% 
-  
-  mutate(data_id = row_number()) %>%                        # creates new column with row numbers 
-  select(data_id, taxi_id, date_time, longitude, latitude)  # saves the tibble with columns in a respective order
+  set_names(c("taxi_id","date_time","longitude","latitude")) 
 
 head(taxi)
 ```
 
-<br>
+We check if any of the GPS records are duplicated. Duplicate rows imply the same coordinates recorded at the same time. We use distinct() function eliminate duplicated rows. 
+
 ```{r}
-# excludes any duplicate rows (coordinates recorded at same time).
-# .keep_all = TRUE indicates the data_id column not to be excluded in final tibble
-
-taxi_df1 <- taxi %>% 
-  distinct(taxi_id, date_time, longitude,latitude, .keep_all = TRUE)
-
+# excludes duplicated rows (coordinates recorded at the same time).
+taxi_df1 <- taxi %>% distinct()
 
 b <- nrow(taxi_df1) #number of rows after applying distinct
 a <- nrow(taxi) #number of rows in original data set
 ```
 
+`r a-b` observations (rows) were identified as duplicated rows. Therefore we use the new tibble generated after applying distinct() function for the rest of our analysis. We also add a new column consisting of row numbers which serves as unique ID numbers for our GPS records.
 
-`r a-b` observations (rows) were identified as duplicated rows.
+<br>
+```{r}
 
+taxi_df1 <- taxi_df1 %>% 
+  mutate(data_id = row_number()) %>%                        # creates new column with row numbers 
+  select(data_id, taxi_id, date_time, longitude, latitude)  # saves the tibble with columns in a respective order
+
+head(taxi_df1)
+```
+
+We extract time, year, month, day, hours, minutes and seconds information from date_time column and place each one of them in a new column. For this, we use hms library functions. In addition, we also save the day of the week information (Monday to Sunday) using the date information from date_time column.  
 <br>
 ```{r}
 taxi_df1 <- taxi_df1 %>%
@@ -124,7 +129,7 @@ taxi_df1 <- taxi_df1 %>%
 head(taxi_df1)
 ```
 
-
+We create a geometry column using the longitude and latitude columns in the tibble. 
 <br>
 ```{r}
 #creates geometry using "longitude" and "latitude" columns and assigns CRS as 4326 since the values are in degrees
@@ -1057,24 +1062,30 @@ forplot %>%
 
 ### 4. Conclusion
 
-**Library citations:**  
- 1. rmarkdown  
- 2. knitr  
- 3. tidyverse  
- 4. sf  
- 5. lwgeom  
- 6. ggplot2  
- 7. scales  
- 8. lubridate  
- 9. hms  
-10. broom  
-11. DT  
-12. mapview  
-13. ggpubr  
-14. tmaptools   
-15. stargazer  
-16. Zelig  
+
+#### Software citations
+ 1. *R* [@RCoreTeam2021]  
+ 2. *R Studio* [@RStudioTeam2020]  
+
+#### Library citations  
+ 1. *rmarkdown* [@Xie2018] [@Xie2020] [@Allaire2021]  
+ 2. *knitr* [@Xie2014] [@Xie2015] [@Xie2021]  
+ 3. *tidyverse* [@Wickham2019]  
+ 4. *sf* [@Tennekes2021]  
+ 5. *lwgeom* [@Pebesma2021]  
+ 6. *ggplot2* [@Wickham2016]  
+ 7. *scales* [@Wickham2020]  
+ 8. *lubridate* [@Grolemund2011]   
+ 9. *hms* [@Muller2021]  
+10. *broom* [@Robinson2021]  
+11. *DT* [@Xie2021a]  
+12. *mapview* [@Appelhans2021]  
+13. *ggpubr* [@Kassambara2020]  
+14. *tmaptools* [@Tennekes2021]  
+15. *stargazer* [@stargazer]    
+16. *Zelig* [@Zelig1] [@Zelig2]  
 
 ### References
+
 
 
