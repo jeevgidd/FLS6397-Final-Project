@@ -14,35 +14,56 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-#### **Observations:**  
-The project **"Exploring Beijing Taxis GPS data"** is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project is developed based on the principles and techniques discussed in the course, prioritizing the clarity and organization of the script and the good practices of data science and programming. Therefore, certain parts of the analysis consider simple assumptions and may not represent the actual complexity of a scientific problem. The complete instructions are found [here](https://jonnyphillips.github.io/Ciencia_de_Dados/projeto.html).
+#### Observations
+The project **"Exploring Beijing Taxis GPS data"** is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project is developed based on the principles and techniques discussed in the course, prioritizing the clarity and organization of the script and the good practices of data science and programming. Therefore, certain parts of the analysis consider simple assumptions and may not represent the actual complexity of a scientific problem. The project instructions are found [here](https://jonnyphillips.github.io/Ciencia_de_Dados/projeto.html). **The complete project and instructions for reproducibility are available on [Github](https://github.com/jeevgidd/FLS6397-Final-Project).**
 
-do not forget to remove the set working directory
-```{r}
-setwd("D:/data/Disciplines/Data_Analysis_for_Social_Sciences/Challenges/Final-Project/")
-```
-
-### **1. Introduction**
+### 1. Introduction
 Global Positioning System (GPS) technology has revolutionized the fields of mapping and navigation. The present-day industries such as aviation, marine, surveying, and military have been extensively using the services offered by GPS technology. Its application in transportation systems has become widespread for the past two decades, mainly by the introduction of in-vehicle GPS facilities that allowed effective navigation and monitoring of vehicle location. As GPS-enabled smartphones have become mainstream, services such as route guidance, analyzing traffic movements, estimating fast routes, and predicting travel duration became commercially viable.
 
 In the present project, we explore the location history data of taxis in the Beijing municipality recorded from February 2 to February 8, 2008. The original data set published by Microsoft consists of trajectories of 33,000 taxis, and a sample of 10,357 taxi trajectories are available on the [Microsoft website](https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/). We begin with analyzing and exploring a single taxi trajectory and finally perform aggregate analysis of a few taxi trajectories. The aggregate analysis will not include the data of 10,357 taxis because of the computational limitations.  
 
-### **2. Objectives**
-1. Calculate variables such as distance and speed from raw coordinate tracks of the taxis  
-2. Identify staying points and moving points of the taxis  
-3. Generate and categorize trips and staying locations of the taxis  
-4. Predict trip duration using a linear regression model  
+#### Important definitions
+1. **Stay location:** Stay location is defined as a location where the taxi waited for at least a certain duration.  
 
-### **3. Analysis**
+2. **Trip:** A trip is defined as a set of GPS points recorded during the travel between one stay location to another stay location.  
+
+3. **Stay point:** Stay points are the GPS points recorded inside a stay location.  
+
+4. **Moving point:** A moving point is one of the GPS points recorded during the travel between one stay location to another stay location.  
+
+**A stay location consists of multiple stay points and a trip consists of multiple moving points.**
 
 <br>
+```{r, echo=FALSE, out.width="50%", fig.align = 'center', fig.cap="Schematic representation"}
+knitr::include_graphics("image.png")
+```
+
+### 2. Objectives
+
+1. **Analysis of an individual taxi trajectory**
+    * Calculate the distance between the consecutive GPS points in an individual taxi trajectory. Subsequently, calculate the speeds with which the taxi traveled from one point to another.
+    * Classify the GPS points of the trajectory into stay or moving points.
+    * Aggregate and label the stay points and moving points into stay locations and trips.
+    * Calculate trip duration, speed and identify pickup and drop hours of each trip performed by the taxi.
+    * Calculate the stay duration at each stay location and classify them.
+    * Visualize the different stay locations and moving points on an interactive map.
+2. **Aggregate analysis of multiple taxi trajectories**
+    * To import multiple taxi trajectories and repeat the analysis as performed above.
+    * Generate aggregated stay location tables and trip tables.
+    * Visualize the aggregated stay locations and moving points on a map.
+    * Identify the district with highest taxi waiting points.
+    * Identify the total number of trips done on each day of the week and each part of the day.
+    * Determine the percentage distribution of trips based on the trip duration on each day of the week.
+    * Develop a linear regression model based on trip distance and trip duration, and predict the trip duration.
+
+### 3. Analysis
+First, we load the required options for our R session. We turn off the scientific notation and assign value 10 to the “pillar.sigfig” option. This allows us to distinguish the decimals of latitude and longitude values. We also load the necessary libraries for our analysis.
 ```{r options}
 # loads required options
 options(pillar.sigfig = 10)     # number of digits to appear in a tibble
 options(scipen=999)             # turnoff scientific notation
 ```
 
-<br>
 ```{r libraries}
 #load required libraries
 library(rmarkdown)          #install.packages("rmarkdown")
@@ -63,16 +84,14 @@ library(stargazer)          #install.packages("stargazer")
 library(Zelig)              #install.packages("Zelig")
 ```
 
-
-As per the provided user guide (available in the taxi_data folder), the GPS trajectory data file of each taxi contains four columns.   
+The GPS trajectory data file of each taxi contains four columns(refer user guide available in the taxi_data folder).
 1. Taxi ID  
 2. Date and time when the coordinates were recorded  
 3. Longitude  
 4. Latitude  
 The data is ordered by the date and time column. First, we only import and work with data from one taxi (TAXI 48) and assign the respective column names.
 
-<br>
-```{r importsingle}
+```{r import_single}
 # imports only one taxi file (48.txt) data from taxi_data folder. 
 # separator and column names are assigned as necessary (refer user_guide.pdf)
 
@@ -339,7 +358,6 @@ head(taxi_df2)
 ```
 
 
-
 ```{r labeled_stay_move}
 
 ordered_stay_move <- function(df) {
@@ -399,7 +417,6 @@ taxi_df2 <- taxi_df2 %>%
 head(taxi_df2)
 ```
 
-
 <br>
 ```{r trip_table_single}
 
@@ -421,7 +438,6 @@ trip_table <- taxi_df2 %>%
 summary(trip_table) #gives summary statistics
 
 ```
-
 
 <br>
 ```{r}
@@ -1074,15 +1090,13 @@ forplot %>%
     sim()
 ```
 
-
-### **4. Conclusion**
-
+### 4. Conclusion
 
 #### Software citations
- 1. *R* [@RCoreTeam2021]  
- 2. *R Studio* [@RStudioTeam2020]  
+1. *R* [@RCoreTeam2021]  
+2. *R Studio* [@RStudioTeam2020]  
 
-#### Library citations  
+#### Library citations
  1. *rmarkdown* [@Xie2018] [@Xie2020] [@Allaire2021]  
  2. *knitr* [@Xie2014] [@Xie2015] [@Xie2021]  
  3. *tidyverse* [@Wickham2019]  
@@ -1100,7 +1114,8 @@ forplot %>%
 15. *stargazer* [@stargazer]    
 16. *Zelig* [@Zelig1] [@Zelig2]  
 
-### **References**
+### References
+
 
 
 
