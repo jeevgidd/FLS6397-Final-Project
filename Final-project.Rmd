@@ -14,34 +14,36 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-#### Observations:  
-The project "Exploring Beijing Taxis GPS data" is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project is developed based on the principles and techniques discussed in the course, prioritizing the clarity and organization of the script and the good practices of data science and programming. Therefore, certain parts of the analysis consider simple assumptions and may not represent the actual complexity of a scientific problem. The complete instructions are found [here](https://jonnyphillips.github.io/Ciencia_de_Dados/projeto.html).
+#### **Observations:**  
+The project **"Exploring Beijing Taxis GPS data"** is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project is developed based on the principles and techniques discussed in the course, prioritizing the clarity and organization of the script and the good practices of data science and programming. Therefore, certain parts of the analysis consider simple assumptions and may not represent the actual complexity of a scientific problem. The complete instructions are found [here](https://jonnyphillips.github.io/Ciencia_de_Dados/projeto.html).
 
 do not forget to remove the set working directory
 ```{r}
 setwd("D:/data/Disciplines/Data_Analysis_for_Social_Sciences/Challenges/Final-Project/")
 ```
 
-### 1. Introduction
-Global Positioning System (GPS) technology has revolutionized the field of navigation. 
+### **1. Introduction**
+Global Positioning System (GPS) technology has revolutionized the fields of mapping and navigation. The present-day industries such as aviation, marine, surveying, and military have been extensively using the services offered by GPS technology. Its application in transportation systems has become widespread for the past two decades, mainly by the introduction of in-vehicle GPS facilities that allowed effective navigation and monitoring of vehicle location. As GPS-enabled smartphones have become mainstream, services such as route guidance, analyzing traffic movements, estimating fast routes, and predicting travel duration became commercially viable.
 
-### 2. Objectives
+In the present project, we explore the location history data of taxis in the Beijing municipality recorded from February 2 to February 8, 2008. The original data set published by Microsoft consists of trajectories of 33,000 taxis, and a sample of 10,357 taxi trajectories are available on the [Microsoft website](https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/). We begin with analyzing and exploring a single taxi trajectory and finally perform aggregate analysis of a few taxi trajectories. The aggregate analysis will not include the data of 10,357 taxis because of the computational limitations.  
+
+### **2. Objectives**
 1. Calculate variables such as distance and speed from raw coordinate tracks of the taxis  
 2. Identify staying points and moving points of the taxis  
 3. Generate and categorize trips and staying locations of the taxis  
 4. Predict trip duration using a linear regression model  
 
-### 3. Analysis
+### **3. Analysis**
 
 <br>
-```{r}
+```{r options}
 # loads required options
 options(pillar.sigfig = 10)     # number of digits to appear in a tibble
 options(scipen=999)             # turnoff scientific notation
 ```
 
 <br>
-```{r}
+```{r libraries}
 #load required libraries
 library(rmarkdown)          #install.packages("rmarkdown")
 library(knitr)              #install.packages("knitr")
@@ -62,15 +64,15 @@ library(Zelig)              #install.packages("Zelig")
 ```
 
 
-As per the official user_guide (available in the taxi_data folder), the raw GPS trajectory of a taxi contains four columns.  
-  * Taxi ID  
-  * Date and time when the coordinates were recorded  
-  * Longitude  
-  * Latitude  
-First, we import and work only with data from one taxi (TAXI 48) and assign respective column names.
+As per the provided user guide (available in the taxi_data folder), the GPS trajectory data file of each taxi contains four columns.   
+1. Taxi ID  
+2. Date and time when the coordinates were recorded  
+3. Longitude  
+4. Latitude  
+The data is ordered by the date and time column. First, we only import and work with data from one taxi (TAXI 48) and assign the respective column names.
 
 <br>
-```{r}
+```{r importsingle}
 # imports only one taxi file (48.txt) data from taxi_data folder. 
 # separator and column names are assigned as necessary (refer user_guide.pdf)
 
@@ -81,9 +83,9 @@ taxi <- read_delim("taxi_data/48.txt",
 head(taxi)
 ```
 
-We check if any of the GPS records are duplicated. Duplicate rows imply the same coordinates recorded at the same time. We use distinct() function eliminate duplicated rows. 
+We check if the GPS records are duplicated. Duplicate rows imply the same coordinates recorded at the same time. We use the distinct() function to eliminate duplicated rows.  
 
-```{r}
+```{r removeduplicates}
 # excludes duplicated rows (coordinates recorded at the same time).
 taxi_df1 <- taxi %>% distinct()
 
@@ -91,10 +93,10 @@ b <- nrow(taxi_df1) #number of rows after applying distinct
 a <- nrow(taxi) #number of rows in original data set
 ```
 
-`r a-b` observations (rows) were identified as duplicated rows. Therefore we use the new tibble generated after applying distinct() function for the rest of our analysis. We also add a new column consisting of row numbers which serves as unique ID numbers for our GPS records.
+`r a-b` observations (rows) were identified as duplicated rows. Therefore we use the new tibble generated after applying the distinct() function for the rest of our analysis. We also add a new column consisting of row numbers which serve as unique ID numbers for our GPS records.  
 
 <br>
-```{r}
+```{r rows_n_newcolumn}
 
 taxi_df1 <- taxi_df1 %>% 
   mutate(data_id = row_number()) %>%                        # creates new column with row numbers 
@@ -103,9 +105,10 @@ taxi_df1 <- taxi_df1 %>%
 head(taxi_df1)
 ```
 
-We extract time, year, month, day, hours, minutes and seconds information from date_time column and place each one of them in a new column. For this, we use hms library functions. In addition, we also save the day of the week information (Monday to Sunday) using the date information from date_time column.  
+We extract the year, month, day, time, hours, minutes, and seconds information from the date_time column and save each one of them in a new column. For this, we use the hms library functions. In addition, we save the day of the week information (Monday to Sunday) using the date information from the date_time column.   
+
 <br>
-```{r}
+```{r extractinfo}
 taxi_df1 <- taxi_df1 %>%
   mutate(time = as_hms(date_time),              # extracts and saves only time from data_time column  
          year = year(date_time),                # extracts and saves only year as numeric
@@ -129,9 +132,9 @@ taxi_df1 <- taxi_df1 %>%
 head(taxi_df1)
 ```
 
-We create a geometry column using the longitude and latitude columns in the tibble. 
+We then create a geometry column using the longitude and latitude columns. We use st_as_sf function of the sf library to convert the tibble into an sf object.  
 <br>
-```{r}
+```{r converttosf}
 #creates geometry using "longitude" and "latitude" columns and assigns CRS as 4326 since the values are in degrees
 #remove FALSE makes sure that the original columns are not deleted
 
@@ -141,9 +144,10 @@ taxi_df2 <- taxi_df1 %>%
 head(taxi_df2)
 ```
 
+We then calculate the distances traveled between consecutive GPS points. In other words, the distance at the first GPS point is 0 and at second GPS point is the distance traveled from first and second GPS points and so on. We also calculate the time taken to reach a GPS point from the previously recorded GPS point. Using the distance and time taken values, we calculate the speed with which the taxi was traveled.
 
 <br>
-```{r}
+```{r distance_speed}
 #function to calculate distance and speed from the geometries created in previous steps
 
 distance_speed <- function(dff) {
@@ -186,7 +190,6 @@ distance_speed <- function(dff) {
     
 }
 
-
 # calculates distance speed on the tibble by using above function 
 taxi_df2 <- taxi_df2 %>% 
   distance_speed()
@@ -195,7 +198,14 @@ head(taxi_df2)
 
 ```
 
+Column names | Description
+------------- | -------------
+distance | Distance traveled from the previous GPS point
+time_diff | Time taken to reach the current GPS point from the previous GPS point
+speed | The speed with which the taxi reached the current GPS point
 
+
+Now the distance and speed through time are plotted.
 <br>
 ```{r, out.width = '95%', fig.align = "center"}
 #for labels in facet_grid
@@ -247,9 +257,10 @@ speed_plot <- taxi_df2 %>%
 gridExtra::grid.arrange(distance_plot, speed_plot, nrow=2)
 ```
 
+We see the distance traveled and speed recorded by the taxi were near to zero on Thursday and comparatively less on Friday. We can assume that in this particular period, the taxi driver might not have worked on Thursday. We see that the speed recorded on Tuesday reaches 300 km/hour, which seems unusual. The speed limit on the city express roads and expressways in Beijing is 100 km/hour and 120 km/hour respectively. We can safely assume that these points are outliers because of the satellite errors. Therefore we remove the points with speed above 120 km/hr from the dataset and recalculate the distances and speed.
 
 <br>
-```{r, out.width = '80%', fig.align = "center"}
+```{r distanceVsSpeed, out.width = '80%', fig.align = "center"}
 
 #distance vs speed plot
 plot_before <- taxi_df2 %>% 
@@ -266,7 +277,7 @@ plot_before <- taxi_df2 %>%
 
 #removes values with speed more than 100 and re-calculates distance and speed using distance_speed function
 taxi_df2 <- taxi_df2 %>% 
-  filter(speed < 100) %>% 
+  filter(speed < 120) %>% 
   distance_speed()
 
 
@@ -289,8 +300,12 @@ gridExtra::grid.arrange(plot_before, plot_after, ncol=2)
 ```
 
 
+As we can see, a linear model plotted with distance and speed before and after removing outliers, the latter one seems to fit better.  
 <br>
-```{r}
+We then use the distance and time difference variables to identify staying points and moving points of the taxi. Staying point is defined as a
+
+<br>
+```{r stay_move}
 #function to identify if the recorded coordinates are staying or moving points
 
 stay_moving <- function(df) {
@@ -325,7 +340,7 @@ head(taxi_df2)
 
 
 
-```{r}
+```{r labeled_stay_move}
 
 ordered_stay_move <- function(df) {
   
@@ -386,7 +401,7 @@ head(taxi_df2)
 
 
 <br>
-```{r}
+```{r trip_table_single}
 
 #generates table with only trips taken by taxi 48.
 
@@ -428,7 +443,7 @@ trip_table %>%
 
 
 <br>
-```{r}
+```{r stay_table_single}
 stay_table <- taxi_df2 %>% 
     filter(type=="staying") %>% #only staying points
     group_by(stay_points_label) %>% #groups by staying point label 
@@ -1060,7 +1075,7 @@ forplot %>%
 ```
 
 
-### 4. Conclusion
+### **4. Conclusion**
 
 
 #### Software citations
@@ -1085,7 +1100,7 @@ forplot %>%
 15. *stargazer* [@stargazer]    
 16. *Zelig* [@Zelig1] [@Zelig2]  
 
-### References
+### **References**
 
 
 
