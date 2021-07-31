@@ -20,7 +20,7 @@ The project **"Exploring Beijing Taxis GPS data"** is submitted as the final pro
 ### 1. Introduction
 Global Positioning System (GPS) technology has revolutionized the fields of mapping and navigation. The present-day industries such as aviation, marine, surveying, and military have been extensively using the services offered by GPS technology. Its application in transportation systems has become widespread for the past two decades, mainly by the introduction of in-vehicle GPS facilities that allowed effective navigation and monitoring of vehicle location. As GPS-enabled smartphones have become mainstream, services such as route guidance, analyzing traffic movements, estimating fast routes, and predicting travel duration became commercially viable.
 
-In the present project, we explore the location history data of taxis in the Beijing municipality recorded from February 2 to February 8, 2008. The original data set published by Microsoft consists of trajectories of 33,000 taxis, and a sample of 10,357 taxi trajectories are available on the [Microsoft website](https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/). We begin with analyzing and exploring a single taxi trajectory and finally perform aggregate analysis of a few taxi trajectories. The aggregate analysis will not include the data of 10,357 taxis because of the computational limitations.  
+In the present project, we explore the location history data of taxis in the Beijing municipality recorded from February 2 to February 8, 2008. The original data set published by Microsoft consists of trajectories of 33,000 taxis, and a sample of 10,357 taxi trajectories are available on the [Microsoft website](https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/) [@yuan2011t] [@yuan2011driving]. We begin with analyzing and exploring a single taxi trajectory and finally perform aggregate analysis of a few taxi trajectories. The aggregate analysis will not include the data of 10,357 taxis because of the computational limitations.  
 
 #### Important definitions
 1. **Stay location:** Stay location is defined as a location where the taxi waited for at least a certain duration.  
@@ -84,11 +84,19 @@ library(stargazer)          #install.packages("stargazer")
 library(Zelig)              #install.packages("Zelig")
 ```
 
-The GPS trajectory data file of each taxi contains four columns(refer user guide available in the taxi_data folder).
-1. Taxi ID  
-2. Date and time when the coordinates were recorded  
-3. Longitude  
-4. Latitude  
+<br>
+**Individual Analysis** 
+
+The GPS trajectory file of each taxi contains four columns (refer user guide available in the taxi_data folder).
+
+1. Taxi ID
+
+2. Date and time when the coordinates were recorded
+
+3. Longitude 
+
+4. Latitude
+
 The data is ordered by the date and time column. First, we only import and work with data from one taxi (TAXI 48) and assign the respective column names.
 
 ```{r import_single}
@@ -99,12 +107,12 @@ taxi <- read_delim("taxi_data/48.txt",
                    delim = ",", col_names = FALSE) %>%
   set_names(c("taxi_id","date_time","longitude","latitude")) 
 
-head(taxi)
+taxi
 ```
 
-We check if the GPS records are duplicated. Duplicate rows imply the same coordinates recorded at the same time. We use the distinct() function to eliminate duplicated rows.  
+We check if the trajectory has duplicated GPS records. Duplicate rows imply the same coordinates recorded at the same time. We use the **distinct()** function to eliminate the duplicated rows.  
 
-```{r removeduplicates}
+```{r remove_duplicates}
 # excludes duplicated rows (coordinates recorded at the same time).
 taxi_df1 <- taxi %>% distinct()
 
@@ -112,9 +120,8 @@ b <- nrow(taxi_df1) #number of rows after applying distinct
 a <- nrow(taxi) #number of rows in original data set
 ```
 
-`r a-b` observations (rows) were identified as duplicated rows. Therefore we use the new tibble generated after applying the distinct() function for the rest of our analysis. We also add a new column consisting of row numbers which serve as unique ID numbers for our GPS records.  
+`r a-b` observations (rows) were identified as duplicated GPS records. Therefore we use the new tibble without the duplicated rows for the rest of our analysis. We also add a new column consisting of row numbers which serve as unique ID numbers for our GPS records.
 
-<br>
 ```{r rows_n_newcolumn}
 
 taxi_df1 <- taxi_df1 %>% 
@@ -124,10 +131,9 @@ taxi_df1 <- taxi_df1 %>%
 head(taxi_df1)
 ```
 
-We extract the year, month, day, time, hours, minutes, and seconds information from the date_time column and save each one of them in a new column. For this, we use the hms library functions. In addition, we save the day of the week information (Monday to Sunday) using the date information from the date_time column.   
+We extract the year, month, day, complete-time, only hours, only minutes, and only seconds information from the date_time column, and save each one of them in a new column. For this, we use the **hms** library functions. In addition, we save the day of the week information (Monday to Sunday) using the date from the date_time column.  
 
-<br>
-```{r extractinfo}
+```{r extract_info}
 taxi_df1 <- taxi_df1 %>%
   mutate(time = as_hms(date_time),              # extracts and saves only time from data_time column  
          year = year(date_time),                # extracts and saves only year as numeric
@@ -151,9 +157,9 @@ taxi_df1 <- taxi_df1 %>%
 head(taxi_df1)
 ```
 
-We then create a geometry column using the longitude and latitude columns. We use st_as_sf function of the sf library to convert the tibble into an sf object.  
-<br>
-```{r converttosf}
+We then use **st_as_sf** function from the **sf** library to convert the tibble into an sf object which uses the longitude and latitude values to create a geometry column.
+
+```{r convert_to_sf}
 #creates geometry using "longitude" and "latitude" columns and assigns CRS as 4326 since the values are in degrees
 #remove FALSE makes sure that the original columns are not deleted
 
@@ -163,9 +169,14 @@ taxi_df2 <- taxi_df1 %>%
 head(taxi_df2)
 ```
 
-We then calculate the distances traveled between consecutive GPS points. In other words, the distance at the first GPS point is 0 and at second GPS point is the distance traveled from first and second GPS points and so on. We also calculate the time taken to reach a GPS point from the previously recorded GPS point. Using the distance and time taken values, we calculate the speed with which the taxi was traveled.
+We calculate the distances traveled between consecutive GPS points. In other words, the distance at the first GPS point is 0 and at second GPS point is the distance traveled between first and second GPS points and so on. We also calculate the time taken to reach a GPS point from the previously recorded GPS point. Using the 'distance' and 'time taken' values, we calculate the speed with which the taxi traveled between the GPS points. For distance calculation, we use **st_distance** function and for time difference, we use **difftime** function. The distances are calculated in kilometers (km), time is calculated in hours (hr) and speed as km/hr.
 
-<br>
+Column names | Description
+------------- | -------------
+distance | Distance traveled from the previous GPS point (km)
+time_diff | Time taken to reach the current GPS point from the previous GPS point (hr)
+speed | The speed with which the taxi reached the current GPS point (km/hr)
+
 ```{r distance_speed}
 #function to calculate distance and speed from the geometries created in previous steps
 
@@ -217,15 +228,8 @@ head(taxi_df2)
 
 ```
 
-Column names | Description
-------------- | -------------
-distance | Distance traveled from the previous GPS point
-time_diff | Time taken to reach the current GPS point from the previous GPS point
-speed | The speed with which the taxi reached the current GPS point
+Now we use **ggplot** library functions to plot the distance and speed through time on each day.
 
-
-Now the distance and speed through time are plotted.
-<br>
 ```{r, out.width = '95%', fig.align = "center"}
 #for labels in facet_grid
 #named vector with day (in date) as names and day of the week as values
@@ -276,9 +280,8 @@ speed_plot <- taxi_df2 %>%
 gridExtra::grid.arrange(distance_plot, speed_plot, nrow=2)
 ```
 
-We see the distance traveled and speed recorded by the taxi were near to zero on Thursday and comparatively less on Friday. We can assume that in this particular period, the taxi driver might not have worked on Thursday. We see that the speed recorded on Tuesday reaches 300 km/hour, which seems unusual. The speed limit on the city express roads and expressways in Beijing is 100 km/hour and 120 km/hour respectively. We can safely assume that these points are outliers because of the satellite errors. Therefore we remove the points with speed above 120 km/hr from the dataset and recalculate the distances and speed.
+We see the distance traveled and speed recorded by the taxi were comparatively less on Friday and near to 0 on Thursday. We can assume that in this particular week, the taxi driver might not have worked on Thursday. We see that the speed recorded on Tuesday reaches 300 km/hour, which seems unusual. The [speed limits](https://www.beijingesc.com/tips-on-driving-in-china/20-on-speed-limits.html) on the city express roads and expressways in Beijing are **100 km/hr** and **120 km/hr** respectively. We can safely assume that these points are outliers as the result of poor satellite signals. Therefore, we remove the points with speed above 120 km/hr from the dataset and re-calculate the distances and speeds.
 
-<br>
 ```{r distanceVsSpeed, out.width = '80%', fig.align = "center"}
 
 #distance vs speed plot
@@ -318,26 +321,26 @@ gridExtra::grid.arrange(plot_before, plot_after, ncol=2)
 
 ```
 
+As we can see the distance versus speed linear model plotted before and after removing outliers, the latter one seems to fit better.  
 
-As we can see, a linear model plotted with distance and speed before and after removing outliers, the latter one seems to fit better.  
-<br>
-We then use the distance and time difference variables to identify staying points and moving points of the taxi. Staying point is defined as a
+We now classify the GPS records into **stay points** and **moving points** (see definitions in introduction) using the algorithm proposed in a paper published by [Microsoft](https://www.microsoft.com/en-us/research/publication/mining-user-similarity-based-on-location-history/) [@li2008mining]. To assign a GPS point as a stay point, the algorithm uses two variables; the distance and the time difference.  
 
-<br>
+In our project, we define a GPS point as a stay point if the distance traveled from previous point is **less than or equal to 50 meters** and time taken to reach this point is **up to 30 minutes**. We use a threshold of 30 minutes of time difference, assuming that Beijing municipality observes heavy traffic (to avoid labeling moving points as stay points). The points other than the stay points are labeled as moving points.
+
 ```{r stay_move}
 #function to identify if the recorded coordinates are staying or moving points
 
 stay_moving <- function(df) {
   
-  #if the distance traveled from previous point to existing point is less than 50 meters and the time to reach the existing point from previous point is less than 15 minutes
-  df_2 <- df %>% filter(distance <= 0.05 & time_diff <=0.25) %>% 
+  #if the distance traveled from previous point to existing point is less than 50 meters and the time to reach the existing point from previous point is less than 30 minutes
+  df_2 <- df %>% filter(distance <= 0.05 & time_diff <=0.5) %>% 
     mutate(type = "staying", #labels the points as staying
            stay_points = 0) #labels with 0 value
   
   
   #All the points other than the staying points are moving points
   df_1 <- df %>%
-  filter(!(distance <= 0.05 & time_diff <=0.25)) %>%
+  filter(!(distance <= 0.05 & time_diff <=0.5)) %>%
     mutate(type = "moving", #labels the points as moving
            stay_points = -1) #labels with -1 value
   
@@ -353,10 +356,22 @@ stay_moving <- function(df) {
 taxi_df2 <- taxi_df2 %>% 
   stay_moving()
 
-head(taxi_df2)
+taxi_df2 %>% select(data_id, distance, time_diff, type, stay_points) %>%
+  st_drop_geometry()
 
 ```
 
+As we can see, each GPS point is labeled either with 0 (stay point) or -1 (moving point). Our goal is to label multiple set of stay points as stay locations and multiple set of moving points as trips (see the definition in the introduction).
+
+For instance, if our GPS records consists a series of GPS points as follows:
+  
+**[0, -1,-1,-1, 0,0,0,0]**  i.e. **[stay, moving, moving, moving, stay, stay, stay, stay]**
+
+We convert them into:
+  
+**[stay_1, trip_1, trip_1, trip_1, stay_2, stay_2, stay_2, stay_2]**
+
+Hence, in this example we have two stay locations **(stay_1, stay_2)** and one trip **(trip_1)**.
 
 ```{r labeled_stay_move}
 
@@ -414,10 +429,12 @@ ordered_stay_move <- function(df) {
 taxi_df2 <- taxi_df2 %>% 
   ordered_stay_move()
 
-head(taxi_df2)
+taxi_df2 %>% select(data_id, distance, time_diff, type, stay_points, stay_points_label) %>%
+  st_drop_geometry()
 ```
 
-<br>
+Now as we have labeled and classified the GPS records into **stay locations** and **trips**, we first work with the trips information. We calculate trip distance, trip duration, and speed for each trip. We also extract the pick-up hour (hour value at the start of the trip) and drop hour (hour value at the end of the trip). The trip table is generated as follows.
+
 ```{r trip_table_single}
 
 #generates table with only trips taken by taxi 48.
@@ -439,10 +456,9 @@ summary(trip_table) #gives summary statistics
 
 ```
 
-<br>
-```{r}
-trip_table <- trip_table %>% 
-  filter(trip_distance_kms != 0 & trip_duration_hrs != 0) #removes trips with distance and duration equal to 0
+As seen in the summary statistics the trip distances (km) vary from `r trip_table %>% pull(trip_distance_kms) %>% min()` to `r trip_table %>% pull(trip_distance_kms) %>% max()` and the trip duration (hrs) vary from `r trip_table %>% pull(trip_duration_hrs) %>% min()` to `r trip_table %>% pull(trip_duration_hrs) %>% max()`. We generate a well formatted table using **kable** function representing the top ten trips based on the distance traveled. 
+
+```{r trip_kable}
 
 trip_table %>% 
     top_n(10, wt=trip_distance_kms) %>% #only top 10 highest trips based on distance traveled
@@ -457,8 +473,8 @@ trip_table %>%
                         "Pickup hour", "Drop hour")) #column names
 ```
 
+Now, we generate the stay locations table consisting of stay location IDs and total time spent in each stay location. For convenience, we replace all the stay points in a stay location with the first recorded stay point. This avoids plotting multiple points on a map that represent the same stay location.
 
-<br>
 ```{r stay_table_single}
 stay_table <- taxi_df2 %>% 
     filter(type=="staying") %>% #only staying points
@@ -471,16 +487,25 @@ stay_table <- taxi_df2 %>%
 summary(stay_table)
 ```
 
+As seen in the above summary statistics, the lowest stay duration (hrs) is 0, which seems unusual. Let's filter only for the stay locations with a stay duration of 0 hrs.  
 
-<br>
-```{r}
-stay_table %>% as_tibble() %>%
+```{r whyzero}
+whyzero <- stay_table %>% as_tibble() %>%
   filter(stay_duration_hrs == 0) #filters for stay_duration with 0 value
 ```
 
+```{r whyzero2}
+q <- whyzero %>% pull(stay_points_label) #pulls the stay location label
 
-<br>
-```{r}
+whyzero2 <- taxi_df2 %>% filter(stay_points_label %in% q) #filters for only above pulled stay location labels
+
+whyzero2 %>% select(data_id, stay_points_label, distance, time_diff) %>% 
+  st_drop_geometry()
+```
+
+As we can see in the above-filtered tibble, the stay location with a stay duration of 0 hrs is the first GPS point in the original data set (with distance and time difference values being 0). We ignore this stay location for our further analysis and generate a table of the top 10 stay locations based on the duration spent.
+
+```{r stay_table}
 
 stay_table %>% 
     top_n(10, wt=stay_duration_hrs) %>% #only top 10 stay locations based on duration spent 
@@ -492,9 +517,9 @@ stay_table %>%
           col.names = c("Stay Location ID", "Taxi ID", "Stay duration(hours)")) #column names
 ```
 
+Now we assume that the stay location with maximum duration spent is the **home** of the taxi driver and the stay locations less than one kilometer of distance from the home location as locations near home. The rest of the stay locations are considered as waiting points, where the driver waited for certain duration to pick up the customers.
 
-<br>
-```{r}
+```{r assign_stays}
 #assigns the location as home location with maximum time spent 
 probable_home <- stay_table %>% 
     arrange(-stay_duration_hrs) %>% #orders from top to bottom values by stay duration
@@ -516,8 +541,7 @@ stay_table <- stay_table %>%
 head(stay_table)
 ```
 
-
-<br>
+We combine these new stay type labels into the original data set.
 ```{r}
 #we merge these stay_table values (i.e stay_type) with full taxi 48 data 
 taxi_df2 <- taxi_df2 %>% 
@@ -532,10 +556,9 @@ taxi_df2 <- taxi_df2 %>%
 head(taxi_df2)
 ```
 
+Before we plot the above GPS records on an interactive map, we import the shape files of China and filter only for Beijing municipality. Beijing municipality consists of multiple districts and Beijing district being the major economic corridor.
 
-stay points and moving points of taxi 48
-<br>
-```{r, results='hide'}
+```{r china_shp, results='hide'}
 
 china <- st_read('china_shp/gadm36_CHN_3.shp') #reads china shape file
  
@@ -544,9 +567,9 @@ beijing <- china %>%
 
 ```
 
+We here plot the Beijing geometry by district and all the GPS records of the taxi 48. Each district of Beijing is colored with a different color and GPS points vary color according to the type of point.
 
-<br>
-```{r, out.width = '100%', fig.align = "center"}
+```{r plot_i_map, out.width = '100%', fig.align = "center"}
 
 mapviewOptions(fgb = FALSE) #uses classical leaflet
 mapview(beijing, zcol="NAME_3", alpha=0.1, layer.name="Districts of Beijing Municipality") + #plots and uses only Beijing shape file using district level
@@ -555,10 +578,11 @@ mapview(beijing, zcol="NAME_3", alpha=0.1, layer.name="Districts of Beijing Muni
             layer.name="Point type") 
 ```
 
+Zooming into the interactive map, we can see that the driver lives (red point: home location) in Shunyi district while seems to work more (grey points: moving points) in the Beijing district. Other stay locations (waiting points) are mostly in the Beijing district and on the way between Beijing and Shunyi districts. Surprisingly, we can also observe the waiting locations in the Beijing International Airport present in the outskirts of Shunyi district (bordering Beijing district).
 
-
-Import multiple files
 <br>
+**Aggregate Analysis**  
+Now we will import 9 random taxi files and merge them into one single tibble.
 ```{r}
 #importing 9 taxi data and merging them into one tibble
 
@@ -582,12 +606,9 @@ full_data <- files %>%
   
   ungroup() #ungroups
 
-
 ```
 
-
-Functions to analyze multiple files
-<br>
+We combine the previously defined functions such as distance_speed, stay_moving, ordered_stay_move functions into one function called full_analysis. Further, we define the functions to generate the trip and stay tables.
 ```{r}
 
 # this function combines multiple functions performing distance and speed calculations, and staying and moving points. 
@@ -624,28 +645,6 @@ full_analysis <- function(dff) {
   
 }
 
-#function that generates trip table
-trip_table_full <- function(dff) {
-  
-  trip_table <- dff %>% 
-    filter(type=="moving") %>% #only moving points
-    group_by(stay_points_label) %>% #groups by trip_id
-    summarise(taxi_id = taxi_id[1], #assigns taxi_id
-              trip_distance_kms = sum(distance), #calculates total distance in the grouped trip
-              trip_duration_hrs = sum(time_diff), #calculates total time in the grouped trip
-              speed_km_hr = trip_distance_kms/trip_duration_hrs, #calculates speed in the grouped trip
-              start_hr = hours[1], #extracts pickup hour
-              end_hr = hours[n()], #extracts dropping hour
-              week = day_of_week[1]) %>% #day of the week #extracts only first day_of_week value if the trip continues next day
-    
-    ungroup() %>% #ungroup
-    filter(trip_distance_kms != 0 & trip_duration_hrs != 0) %>% #removes trips with distance and duration equal to 0
-    st_drop_geometry() #drops the geometry column
-  
-  return(trip_table)
-
-}
-
 #function that generates stay locations table
 stay_table_full <- function(dff) {
   
@@ -680,11 +679,31 @@ stay_table_full <- function(dff) {
   return(stay_table)
 }
 
+#function that generates trip table
+trip_table_full <- function(dff) {
+  
+  trip_table <- dff %>% 
+    filter(type=="moving") %>% #only moving points
+    group_by(stay_points_label) %>% #groups by trip_id
+    summarise(taxi_id = taxi_id[1], #assigns taxi_id
+              trip_distance_kms = sum(distance), #calculates total distance in the grouped trip
+              trip_duration_hrs = sum(time_diff), #calculates total time in the grouped trip
+              speed_km_hr = trip_distance_kms/trip_duration_hrs, #calculates speed in the grouped trip
+              start_hr = hours[1], #extracts pickup hour
+              end_hr = hours[n()], #extracts dropping hour
+              week = day_of_week[1]) %>% #day of the week #extracts only first day_of_week value if the trip continues next day
+    
+    ungroup() %>% #ungroup
+    filter(trip_distance_kms != 0 & trip_duration_hrs != 0) %>% #removes trips with distance and duration equal to 0
+    st_drop_geometry() #drops the geometry column
+  
+  return(trip_table)
+
+}
 ```
 
+Now using the above defined functions, we perform the complete analysis on the imported taxis data to generate a complete trip table and a complete stay table consisting of trips and stay locations information from all the imported taxis.
 
-Analyze multiple files-rm
-<br>
 ```{r}
 
 complete_table <- full_data %>%     # 9 taxis data
@@ -701,9 +720,16 @@ complete_stay_table <- complete_table %>%     # 9 taxis analyzed data
   
 ```
 
+```{r v_complete_stay_table}
+complete_stay_table %>% st_drop_geometry()
+```
 
-Type of Stay points
-<br>
+```{r v_complete_trip_table}
+complete_trip_table
+```
+
+First, let's look at the aggregate stay locations on a map. We use the shape files of China and the ggplot functions to plot a static map colored by type of the stay location.
+
 ```{r, out.width = '80%', fig.align = "center"}
 
 beijing %>% 
@@ -762,10 +788,11 @@ beijing %>%
   
 ```
 
+We can see that 5 out of 9 home locations are present outside the Beijing district, whereas most of the waiting locations of the taxis are inside the Beijing district. At least based on trajectory data of these 9 taxis, the taxi drivers seem to work more in Beijing district.
 
-Number of waiting points per district
-<br>
-```{r}
+To quantify the above results, we identify the number of waiting points per each district by joining the waiting point GPS records with the Beijing shape file.
+
+```{r quantify}
 
 bej_mun <- china %>% 
     filter(NAME_1 == "Beijing") #filter only Beijing 
@@ -788,10 +815,11 @@ points_sf_joined %>%
         district of Beijing.")
 ```
 
+Based on the above table, we can confirm that Beijing district observed the highest number of waiting points.
 
-Number of trips done on each day of the week
-<br>
-```{r, out.width = '75%', fig.align = "center"}
+Now, we will work with the complete trip table. First, we plot the number of trips done on each day of the week using the day of the week information extracted during the generation of complete trip table.
+
+```{r eachday, out.width = '75%', fig.align = "center"}
 complete_trip_table %>%
   
   group_by(week) %>% #group by week
@@ -802,10 +830,9 @@ complete_trip_table %>%
   ylab("Number of trips") +                                   # y axis label
   
   #custom x axis text labels
-  scale_x_discrete(labels=c("0" = "Sunday", "1" = "Monday",
+  scale_x_discrete(labels=c("6" ="Saturday", "0" = "Sunday", "1" = "Monday",
                             "2" = "Tuesday", "3" = "Wednesday",
-                            "4" = "Thursday", "5" ="Friday", 
-                            "6" ="Saturday")) +
+                            "4" = "Thursday", "5" ="Friday")) +
   theme_minimal() + # theme
   
   #text size
@@ -815,17 +842,24 @@ complete_trip_table %>%
   
 ```
 
+We can see that the number of trips done on Sunday, Monday and Tuesday seems to be relatively higher compared to the rest of the days. The trips tend to gradually decline from Wednesday to Friday.
 
-Distribution of trips
-<br>
-```{r, out.width = '80%', fig.align = "center"}
+Now, we plot the number of trips that started and ended on each hour of the day. We also divide the day into 5 parts (morning, afternoon, evening, night and late night), and plot the number trips that started and ended in each part of the day.
 
+```{r longertable}
 trip_time_range <- complete_trip_table %>%
     select(stay_points_label, taxi_id, start_hr, end_hr) %>% #selects only respective columns
-    pivot_longer(cols=c(start_hr, end_hr)) %>% #flips the table so the start_hr and end_hr columns values merge into a new column (value) as observations including a respective label column (name) indicating the original column name
   
-  #creates new column defining the category of hour 
-  mutate(drop_hr_type = factor(case_when(value >= 0  & value <= 4 ~ "late_night", #if the hour is in between 0 and 4
+    pivot_longer(cols=c(start_hr, end_hr)) #flips the table so the start_hr and end_hr columns values merge into a new column (value) as observations including a respective label column (name) indicating the original column name
+  
+head(trip_time_range)
+```
+
+```{r division_day}
+#creates new column defining the category of hour 
+trip_time_range <- trip_time_range %>% mutate(drop_hr_type = factor(case_when(
+                                  value >= 0  & value <= 4 ~ "late_night", #if the hour is in between 0 and 4
+                                  
                                   #if the hour is in between 5 and 10
                                   value >= 5  & value <= 10 ~ "morning",
                                   
@@ -844,6 +878,10 @@ trip_time_range <- complete_trip_table %>%
   #name column observation as factors
   mutate(name = factor(name, levels = c("start_hr","end_hr"), ordered = TRUE))
 
+head(trip_time_range)
+```
+
+```{r plot_distribution, out.width = '80%', fig.align = "center"}
 
 one <- trip_time_range  %>%
     ggplot() +
@@ -896,21 +934,22 @@ two <- trip_time_range  %>%
         
         axis.text.y = element_text(size=11))
 
+
 #plots the above two graphs one above other
 ggarrange(one, two, nrow=2, common.legend = TRUE, legend="bottom")
 ```
 
+From the top plot, we can see that the number of trips that start and end gradually increase from 8 am and observe the highest pickups and drops between 1 pm and 9 pm. The lowest number of trips are seen during 1 am to 7 am. When categorized by part of the day, the highest number of trips are observed in the evening. 
 
-Distribution of percentage of trips
-<br>
-```{r, out.width = '80%', fig.align = "center"}
+We now divide the trips based on the trip duration (less than 15 minutes, 15-30 minutes, 30 minutes - 1 hour, 1-3 hours) and see the distribution of the trips based on these categories on each day of the week.
+
+```{r percentage_dis, out.width = '80%', fig.align = "center"}
 
 complete_trip_table %>%
   select(trip_duration_hrs, week) %>% #selects only respective columns
   
   #new column with trip duration category
   mutate(category = 
-           
            #as factors
            factor(case_when(trip_duration_hrs >= 0  & trip_duration_hrs < 15/60 ~ 
                               "<15 min", #less than 15 minutes
@@ -963,9 +1002,13 @@ complete_trip_table %>%
 
 ```
 
+From the above percentage distribution plot, we see that on all the days, at least 50% of the trips made by these nine taxis have a trip duration of more than 3 hours. Although there is no clear pattern, the number of more than 3 hour trips gradually decrease from Wednesday to Saturday.
 
-<br>
-```{r, out.width = '80%', fig.align = "center"}
+Now, let's try to build a **Least Squares Regression** model based on the above complete trip table and predict the time duration of a given trip distance.
+
+Before proceeding to build the model, we first try to plot the trip distances and trip duration using the geom_smooth function from ggplot.
+
+```{r ggplot_tripdur_trip_dist, out.width = '80%', fig.align = "center"}
 
 #trip_distance vs trip_duration plot
 complete_trip_table %>% 
@@ -979,14 +1022,13 @@ complete_trip_table %>%
     theme_bw() + #custom theme
     xlab("Trip distance (km)") +
     ylab("Trip duration (hours)") +
-    ggtitle("Trip distance vs Trip duration with outliers")
+    ggtitle("Trip distance vs Trip duration")
 
 ```
 
+We seem to have a lot of outliers to build a Least Squares Regression model. Therefore, we log transform the values and plot the graph again to see if we can eliminate the outliers and use only certain values to build the model.
 
-<br>
-```{r, out.width = '80%', fig.align = "center"}
-
+```{r outliers_ggplot_tripdur_trip_dist, out.width = '80%', fig.align = "center"}
 
 forplot <- complete_trip_table %>%
   
@@ -1023,9 +1065,9 @@ forplot %>%
     ggtitle("Trip distance vs Trip duration with outliers (log10 transformed)")
 ```
 
+We clearly see points less than 3.5 on log trip distance scale and less than 1 on log trip duration scale seems to be responsible for the worst fit. We delete all these points and use the rest of the points to build a regression model.
 
-<br>
-```{r, out.width = '80%', fig.align = "center"}
+```{r removed_outliers, out.width = '80%', fig.align = "center"}
 
 #trip_distance vs trip_duration plot after filtering (log10 transformed)
 forplot %>%
@@ -1046,10 +1088,10 @@ forplot %>%
     ggtitle("Trip distance vs Trip duration after removing outliers (log10 transformed)")
 ```
 
+Now, before performing the regression, we do a correlation test between the trip distance and trip duration.
 
-<br>
-```{r}
-forplot %>%
+```{r corr}
+corr <- forplot %>%
     
     #filtering
     filter(log_trip_distance_mtrs > 3.5 & (log_trip_duration_min < 2.5 & 
@@ -1058,37 +1100,44 @@ forplot %>%
     #correlation test
     cor.test(~ trip_duration_hrs + trip_distance_kms, data=.) %>%
     tidy()
+
+corr
 ```
 
+As seen in the above result, there exists a positive correlation with an estimate of `r corr %>% pull(estimate)` between trip distance and trip duration. That is, when the trip distance increases, the trip duration also tend to increase.
 
-<br>
-```{r, results='asis', fig.align = "center"}
+Now, trip duration as our dependent variable and trip distance as our independent variable, we perform a Least Squares Regression analysis.
 
-forplot %>%
+```{r LSR, results='asis', fig.align = "center"}
+
+LSR <- forplot %>%
   
   #filtering
   filter(log_trip_distance_mtrs > 3.5 & (log_trip_duration_min < 2.5 & 
                                         log_trip_duration_min > 1.01)) %>%
   
-  #linear regression
-  lm(trip_duration_min ~ trip_distance_kms, data=.) %>%
+  #Least Squares Regression
+  zelig(trip_duration_min ~ trip_distance_kms, data=., model="ls", cite = FALSE)
+
+LSR %>%
+  from_zelig_model() %>%
   stargazer::stargazer(type="html") #html table format
 
 ```
 
 <br>
+
+As seen in the above regression result, our model states that to travel 1 kilometer, a duration of 2.6 minutes are required by the taxi. Although, we should note that our residual error (36.153) seem to be higher. It was already obvious that our model will not perfect based on the above log transformed Trip distance vs trip duration graph. But we proceed to predict duration of a trip when the distance is provided to our regression model.
+
 ```{r}
-forplot %>%
-    
-    #filtering  
-    filter(log_trip_distance_mtrs > 3.5 & (log_trip_duration_min < 2.5 & 
-                                        log_trip_duration_min > 1.01)) %>%
-    
-    #linear regression
-    zelig(trip_duration_min ~ trip_distance_kms, data=., model="ls", cite = FALSE) %>% 
+p_LSR <- LSR %>% 
     setx(trip_distance_kms=5) %>% #predict duration for 5 km
     sim()
+
+p_LSR 
 ```
+
+As seen in the above result, a trip of **5 km** would take around **26.4 minutes** (Speed: **`r round((5/26.4)*60, 2)` km/hour**) to complete. By a quick [Google search](https://qz.com/163178/a-big-reason-beijing-is-polluted-the-average-car-goes-7-5-miles-per-hour/), we can see that the average speed of a car is around **12 km/hour**, which seems to be close to our result.
 
 ### 4. Conclusion
 
