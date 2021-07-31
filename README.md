@@ -1,6 +1,8 @@
 # FLS6397-Final-Project  
 # Exploring Beijing Taxi Data  
   
+This project is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo.
+
 ### Reproduciblity  
 1. Download the repository  
 2. Open .Rmd file using RStudio     
