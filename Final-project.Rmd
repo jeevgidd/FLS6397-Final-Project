@@ -1,5 +1,10 @@
 ---
 title: "Final project: Exploring Beijing Taxis GPS data"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: "Jeevan Giddaluru"
 date: "19/06/2021"
 output:
