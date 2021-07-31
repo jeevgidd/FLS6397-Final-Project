@@ -1,7 +1,7 @@
 # FLS6397-Final-Project  
 # Exploring Beijing Taxi Data  
   
-This project is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project can be viewed from [here](https://github.com/jeevgidd/FLS6397-Final-Project). 
+This project is submitted as the final project for the course Análise de Dados para as Ciências Sociais (FLS6397) offered at the Department of Political Science, University of São Paulo. The project can be viewed from [here](https://jeevgidd.github.io/FLS6397-Final-Project/). 
 
 ### Reproduciblity  
 1. Download the repository  
